@@ -47,13 +47,13 @@
 
         // Place a marker on the location
         // Change the background color.
-        const pinBackground = new PinElement({
-        background: '#FBBC04',});
+        //const pinBackground = new PinElement({
+        //background: '#FBBC04',});
         if (marker) marker.setMap(null); // Remove old marker
         marker = new google.maps.Marker({
           position: location,
           map: map,
-          content: pinBackground.element,
+          //content: pinBackground.element,
           title: "Selected Location222"
         });
 
