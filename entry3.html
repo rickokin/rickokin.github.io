@@ -146,11 +146,9 @@
       // Update radius for nearby places
       function updateRadius() {
         radius = document.getElementById("manual-radius").value;
-        var lat = document.getElementById("manual-lat").value || 0;
-        var lng = document.getElementById("manual-lng").value || 0;
-        if (lat && lng) {
+   
           updateMap(lat, lng);
-        }
+        
       }
     </script>
     <style>
