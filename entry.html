@@ -84,8 +84,8 @@
       function findNearbyPlaces(location) {
         var request = {
           location: location,
-          radius: '1500', // 1.5 km radius
-          type: ['restaurant', 'park', 'store'] // Customize place types as needed
+          radius: '150', // 1.5 km radius (1500)
+          type: ['restaurant'] // Customize place types as needed ['restaurant', 'park', 'store']
         };
 
         service = new google.maps.places.PlacesService(map);
