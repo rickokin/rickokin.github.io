@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Google Maps with AdvancedMarkerElement</title>
+    <title>Google Maps with Map ID</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places,marker&callback=initMap" async defer></script>
     <script>
       var map;
@@ -11,10 +11,14 @@
       var placeType = 'restaurant'; // Default place type
 
       function initMap() {
+        // Set your valid Map ID here
+        var mapId = '8ed753a23da1aad8';
+
         var defaultLocation = { lat: -34.397, lng: 150.644 }; // Default location (initial)
         map = new google.maps.Map(document.getElementById("map"), {
           center: defaultLocation,
-          zoom: 6
+          zoom: 6,
+          mapId: mapId // Use the valid Map ID
         });
 
         if (navigator.geolocation) {
@@ -173,7 +177,7 @@
     </style>
   </head>
   <body>
-    <h1>Google Maps with AdvancedMarkerElement</h1>
+    <h1>Google Maps with Map ID</h1>
     <div id="map"></div>
     <div id="location-info">
       <h3>Your Coordinates:</h3>
