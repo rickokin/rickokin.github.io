@@ -28,6 +28,7 @@
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
               };
+              document.getElementById('manual-lat').value = lat ;
               updateMap(userLocation.lat, userLocation.lng);
             },
             function () {
