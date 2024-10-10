@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Google Maps with Map ID 1</title>
+    <title>Google Maps with Map ID 2</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places,marker&callback=initMap" async defer></script>
     <script>
       var map;
@@ -28,7 +28,8 @@
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
               };
-              document.getElementById('manual-lat').value = lat ;
+              var latitude = position.coords.latitude ;
+              document.getElementById('manual-lat').value = latitude ;
               updateMap(userLocation.lat, userLocation.lng);
             },
             function () {
