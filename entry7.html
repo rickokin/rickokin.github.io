@@ -97,7 +97,8 @@
         service = new google.maps.places.PlacesService(map);
         service.nearbySearch(request, function (results, status) {
           if (status === google.maps.places.PlacesServiceStatus.OK) {
-            document.getElementById("nearby-places").innerHTML = "";
+            var placesWithDistance = [];
+
             for (var i = 0; i < results.length; i++) {
               var place = results[i];
 
@@ -109,11 +110,33 @@
                 place.geometry.location.lng()
               );
 
-              var placeElement = document.createElement("li");
-              placeElement.innerHTML = place.name + " - " + place.vicinity + " (" + distance.toFixed(2) + " miles)";
-              document.getElementById("nearby-places").appendChild(placeElement);
+              // Add place along with the distance to the array
+              placesWithDistance.push({
+                name: place.name,
+                vicinity: place.vicinity,
+                distance: distance
+              });
             }
+
+            // Sort places by distance (ascending)
+            placesWithDistance.sort(function(a, b) {
+              return a.distance - b.distance;
+            });
+
+            // Display sorted places in the HTML
+            displayPlaces(placesWithDistance);
           }
+        });
+      }
+
+      function displayPlaces(places) {
+        var placesList = document.getElementById("nearby-places");
+        placesList.innerHTML = ""; // Clear previous list
+
+        places.forEach(function (place) {
+          var placeElement = document.createElement("li");
+          placeElement.innerHTML = place.name + " - " + place.vicinity + " (" + place.distance.toFixed(2) + " miles)";
+          placesList.appendChild(placeElement);
         });
       }
 
@@ -175,7 +198,7 @@
       <p id="location-address">Waiting for address...</p>
     </div>
 
-    <h3>Nearby Places:</h3>
+    <h3>Nearby Places (sorted by distance):</h3>
     <ul id="nearby-places">
       <li>Loading nearby places...</li>
     </ul>
