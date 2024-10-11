@@ -2,13 +2,12 @@
 <html>
   <head>
     <title>Google Maps with Distance to Nearby Places</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initMap" async defer></script>
     <script>
       var map;
       var marker;
       var service;
       var currentLocation = { lat: 0, lng: 0 }; // Store user's current location
-      var default-radius = 1 ;
 
       function initMap() {
         var mapId = '8ed753a23da1aad8'; // Set your valid Map ID here
@@ -57,7 +56,6 @@
           "Latitude: " + lat + "<br>Longitude: " + lng;
 
         getAddressAndPlaceName(lat, lng);
-        findNearbyPlaces(location);
       }
 
       function getAddressAndPlaceName(lat, lng) {
@@ -81,8 +79,14 @@
 
       function findNearbyPlaces(location) {
         var placeType = document.getElementById("place-type").value;
-        
-        var radiusInMiles = document.getElementById("default-radius").value;
+        var radiusInMiles = document.getElementById("manual-radius").value;
+
+        // Check if radius is provided
+        if (!radiusInMiles || radiusInMiles <= 0) {
+          alert("Please enter a valid radius in miles.");
+          return;
+        }
+
         var radiusInMeters = radiusInMiles * 1609.34; // Convert miles to meters
 
         var request = {
