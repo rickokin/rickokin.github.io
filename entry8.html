@@ -8,7 +8,7 @@
       var marker;
       var service;
       var currentLocation = { lat: 0, lng: 0 }; // Store user's current location
-      var manual-radius = 1 ;
+      var default-radius = 1 ;
 
       function initMap() {
         var mapId = '8ed753a23da1aad8'; // Set your valid Map ID here
@@ -81,7 +81,8 @@
 
       function findNearbyPlaces(location) {
         var placeType = document.getElementById("place-type").value;
-        var radiusInMiles = document.getElementById("manual-radius").value;
+        
+        var radiusInMiles = document.getElementById("default-radius").value;
         var radiusInMeters = radiusInMiles * 1609.34; // Convert miles to meters
 
         var request = {
