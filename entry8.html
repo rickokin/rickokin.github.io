@@ -1,47 +1,41 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Google Maps with Map ID3</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places,marker&callback=initMap" async defer></script>
+    <title>Google Maps with Distance to Nearby Places</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
     <script>
       var map;
       var marker;
       var service;
-      var radius = 1500; // Default radius (1.5 km)
-      var placeType = 'restaurant'; // Default place type
+      var currentLocation = { lat: 0, lng: 0 }; // Store user's current location
 
       function initMap() {
-        // Set your valid Map ID here
-        var mapId = '8ed753a23da1aad8';
-
+        var mapId = '8ed753a23da1aad8'; // Set your valid Map ID here
         var defaultLocation = { lat: -34.397, lng: 150.644 }; // Default location (initial)
+
         map = new google.maps.Map(document.getElementById("map"), {
           center: defaultLocation,
           zoom: 6,
-          mapId: mapId // Use the valid Map ID
+          mapId: mapId
         });
 
+        // Get user's current location using Geolocation API
         if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            function (position) {
-              var userLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-              };
-              
+          navigator.geolocation.getCurrentPosition(function (position) {
+            currentLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+
             // Set default values in the input boxes
-            document.getElementById('manual-lat').value = userLocation.lat;
-            document.getElementById('manual-lng').value = userLocation.lng;
-              
-              updateMap(userLocation.lat, userLocation.lng);
-            },
-            function () {
-              handleLocationError(true, map.getCenter());
-            },
-            { passive: true }
-          );
+            document.getElementById('manual-lat').value = currentLocation.lat;
+            document.getElementById('manual-lng').value = currentLocation.lng;
+
+            // Update the map to show the user's current location
+            updateMap(currentLocation.lat, currentLocation.lng);
+          });
         } else {
-          handleLocationError(false, map.getCenter());
+          alert("Geolocation is not supported by this browser.");
         }
       }
 
@@ -50,15 +44,12 @@
         map.setCenter(location);
         map.setZoom(15);
 
-        if (marker) marker.map = null; // Remove old marker
+        if (marker) marker.setMap(null); // Remove old marker
 
-        const markerElement = document.createElement("div");
-        markerElement.innerHTML = `<div style="background-color:#FF0000; padding:5px;">You are here</div>`;
-        
-        marker = new google.maps.marker.AdvancedMarkerElement({
+        marker = new google.maps.Marker({
           position: location,
           map: map,
-          content: markerElement
+          title: "You are here"
         });
 
         document.getElementById("location-coordinates").innerHTML =
@@ -77,12 +68,6 @@
             if (results[0]) {
               document.getElementById("location-address").innerHTML =
                 "Address: " + results[0].formatted_address;
-              var placeName = results[0].address_components.find(comp => comp.types.includes("point_of_interest"));
-              if (placeName) {
-                document.getElementById("location-place").innerHTML = "Place Name: " + placeName.long_name;
-              } else {
-                document.getElementById("location-place").innerHTML = "Place Name: Not available";
-              }
             } else {
               document.getElementById("location-address").innerHTML = "No address found.";
             }
@@ -92,52 +77,15 @@
           }
         });
       }
-<!--
-      function findNearbyPlaces(location) {
-        var request = {
-          location: location,
-          radius: radius,
-          type: [placeType]
-        };
-
-        service = new google.maps.places.PlacesService(map);
-        service.nearbySearch(request, function (results, status) {
-          if (status === google.maps.places.PlacesServiceStatus.OK) {
-            document.getElementById("nearby-places").innerHTML = "";
-            for (var i = 0; i < results.length; i++) {
-              var place = results[i];
-              createMarker(place);
-              var placeElement = document.createElement("li");
-              placeElement.innerHTML = place.name + " - " + place.vicinity;
-              document.getElementById("nearby-places").appendChild(placeElement);
-            }
-          }
-        });
-      }
-
-      function createMarker(place) {
-        var placeLoc = place.geometry.location;
-
-        const markerElement = document.createElement("div");
-        markerElement.innerHTML = `<div style="background-color:#FF0000; padding:5px;">${place.name}</div>`;
-        
-        var placeMarker = new google.maps.marker.AdvancedMarkerElement({
-          position: placeLoc,
-          map: map,
-          content: markerElement
-        });
-
-        google.maps.event.addListener(placeMarker, 'click', { passive: true }, function () {
-          infowindow.setContent(place.name);
-          infowindow.open(map, this);
-        });
-      }
--->      
 
       function findNearbyPlaces(location) {
+        var placeType = document.getElementById("place-type").value;
+        var radiusInMiles = document.getElementById("manual-radius").value;
+        var radiusInMeters = radiusInMiles * 1609.34; // Convert miles to meters
+
         var request = {
           location: location,
-          radius: radius,
+          radius: radiusInMeters,
           type: [placeType]
         };
 
@@ -166,7 +114,7 @@
             }
 
             // Sort places by distance (ascending)
-            placesWithDistance.sort(function(a, b) {
+            placesWithDistance.sort(function (a, b) {
               return a.distance - b.distance;
             });
 
@@ -205,37 +153,10 @@
         return deg * (Math.PI / 180);
       }
 
-      
-      function handleLocationError(browserHasGeolocation, pos) {
-        alert(
-          browserHasGeolocation
-            ? "Error: The Geolocation service failed."
-            : "Error: Your browser doesn't support geolocation."
-        );
-      }
-
       function manualLocationUpdate() {
         var lat = document.getElementById("manual-lat").value;
         var lng = document.getElementById("manual-lng").value;
         updateMap(lat, lng);
-      }
-
-      function updateRadius() {
-        radius = document.getElementById("manual-radius").value;
-        var lat = document.getElementById("manual-lat").value || 0;
-        var lng = document.getElementById("manual-lng").value || 0;
-        if (lat && lng) {
-          updateMap(lat, lng);
-        }
-      }
-
-      function updatePlaceType() {
-        placeType = document.getElementById("place-type").value;
-        var lat = document.getElementById("manual-lat").value || 0;
-        var lng = document.getElementById("manual-lng").value || 0;
-        if (lat && lng) {
-          updateMap(lat, lng);
-        }
       }
     </script>
     <style>
@@ -255,38 +176,39 @@
     </style>
   </head>
   <body>
-    <h1>Google Maps with Map ID</h1>
+    <h1>Google Maps with Distance to Nearby Places</h1>
     <div id="map"></div>
     <div id="location-info">
       <h3>Your Coordinates:</h3>
       <p id="location-coordinates">Waiting for location...</p>
       <h3>Your Address:</h3>
       <p id="location-address">Waiting for address...</p>
-      <h3>Place Name:</h3>
-      <p id="location-place">Waiting for place name...</p>
     </div>
 
-    <h3>Nearby Places:</h3>
+    <h3>Nearby Places (sorted by distance):</h3>
     <ul id="nearby-places">
-      <li>Waiting for nearby places...</li>
+      <li>Loading nearby places...</li>
     </ul>
 
-    <h3>Manual Latitude, Longitude, Radius, and Place Type Entry:</h3>
+    <h3>Manual Latitude, Longitude Entry:</h3>
     <input type="text" id="manual-lat" placeholder="Enter Latitude" />
     <input type="text" id="manual-lng" placeholder="Enter Longitude" />
-    <input type="number" id="manual-radius" placeholder="Enter Radius in meters" />
 
+    <h3>Specify Search Parameters:</h3>
     <label for="place-type">Choose Place Type:</label>
-    <select id="place-type" onchange="updatePlaceType()">
+    <select id="place-type">
       <option value="restaurant">Restaurant</option>
       <option value="park">Park</option>
+      <option value="cafe">Cafe</option>
       <option value="store">Store</option>
       <option value="museum">Museum</option>
-      <option value="cafe">Cafe</option>
     </select>
 
+    <label for="manual-radius">Enter Radius (in miles):</label>
+    <input type="number" id="manual-radius" placeholder="Enter Radius in miles" />
+
     <button onclick="manualLocationUpdate()">Update Location</button>
-    <button onclick="updateRadius()">Update Radius</button>
+    <button onclick="findNearbyPlaces(currentLocation)">Find Nearby Places</button>
 
     <script>
       window.onload = initMap;
