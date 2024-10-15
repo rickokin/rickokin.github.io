@@ -35,7 +35,7 @@
               var timestamp = new Date().toISOString();
 
               // Post location data to backend API
-              postLocationData(currentLocation.lat, currentLocation.lng, timestamp);
+              // postLocationData(currentLocation.lat, currentLocation.lng, timestamp);
 
               // Set default values in the input boxes
               document.getElementById('manual-lat').value = currentLocation.lat;
@@ -238,6 +238,8 @@
 
     <button onclick="manualLocationUpdate()">Update Location</button>
 
+    <button onclick="postLocationData(currentLocation.lat, currentLocation.lng, timestamp)">INSERT</button>
+    
     <script>
       window.onload = initMap;
     </script>
