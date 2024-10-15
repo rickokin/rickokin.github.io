@@ -233,7 +233,17 @@
     <h3>Manual Latitude, Longitude Entry:</h3>
     <input type="text" id="manual-lat" placeholder="Enter Latitude" />
     <input type="text" id="manual-lng" placeholder="Enter Longitude" />
+    <input type="number" id="manual-radius" placeholder="Enter Radius in meters" />
 
+    <label for="place-type">Choose Place Type:</label>
+    <select id="place-type" onchange="updatePlaceType()">
+      <option value="restaurant">Restaurant</option>
+      <option value="park">Park</option>
+      <option value="store">Store</option>
+      <option value="museum">Museum</option>
+      <option value="cafe">Cafe</option>
+    </select>
+    
     <button onclick="manualLocationUpdate()">Update Location</button>
 
     <button onclick="postLocationData(currentLocation.lat, currentLocation.lng, timestamp)">INSERT</button>
