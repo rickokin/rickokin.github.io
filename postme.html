@@ -10,6 +10,7 @@
       var radius = 1500; // Default radius (1.5 km)
       var placeType = 'restaurant'; // Default place type
       var currentLocation = { lat: 0, lng: 0 }; // Store user's current location
+      var timestamp = new Date().toISOString();
 
       function initMap() {
         // Set your valid Map ID here
@@ -30,9 +31,6 @@
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
               };
-
-              // Get the current timestamp
-              var timestamp = new Date().toISOString();
 
               // Post location data to backend API
               // postLocationData(currentLocation.lat, currentLocation.lng, timestamp);
