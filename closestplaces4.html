@@ -180,6 +180,7 @@
           var longitude = selectedPlace.lng;
 
           // Send the latitude and longitude to an API
+          var placeType = document.getElementById("place-type").value || "restaurant";
           fetch('https://127.0.0.1:5000/post-location', {
             method: 'POST',
             headers: {
