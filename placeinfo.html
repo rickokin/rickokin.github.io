@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Location Finder</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
+    <script>
+      var geocoder;
+      var currentLocation = { lat: 0, lng: 0 };
+
+      function initMap() {
+        geocoder = new google.maps.Geocoder();
+
+        // Try to get the user's current location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (position) {
+              currentLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+              document.getElementById('manual-lat').value = currentLocation.lat;
+              document.getElementById('manual-lng').value = currentLocation.lng;
+              getLocationDetails(currentLocation.lat, currentLocation.lng);
+            },
+            function () {
+              alert('Geolocation failed. Please enter coordinates manually.');
+            }
+          );
+        } else {
+          alert('Geolocation is not supported by this browser.');
+        }
+      }
+
+      function getLocationDetails(lat, lng) {
+        var latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+
+        geocoder.geocode({ location: latlng }, function (results, status) {
+          if (status === 'OK') {
+            if (results[0]) {
+              displayLocationInfo(results[0]);
+            } else {
+              alert('No results found.');
+            }
+          } else {
+            alert('Geocoder failed due to: ' + status);
+          }
+        });
+
+        getPlaceDetails(latlng);
+      }
+
+      function getPlaceDetails(latlng) {
+        var service = new google.maps.places.PlacesService(document.createElement('div'));
+        var request = {
+          location: latlng,
+          radius: '10', // Radius is small, just want place details
+        };
+
+        service.nearbySearch(request, function (results, status) {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+            displayPlaceDetails(results[0]);
+          }
+        });
+      }
+
+      function displayLocationInfo(location) {
+        document.getElementById('location-address').innerText = location.formatted_address;
+      }
+
+      function displayPlaceDetails(place) {
+        document.getElementById('location-name').innerText = place.name;
+        document.getElementById('location-type').innerText = place.types.join(', ');
+      }
+
+      function manualLocationUpdate(e) {
+        e.preventDefault();
+        var lat = document.getElementById('manual-lat').value;
+        var lng = document.getElementById('manual-lng').value;
+        getLocationDetails(lat, lng);
+      }
+    </script>
+    <style>
+      #location-info {
+        margin-top: 20px;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Location Finder</h1>
+
+    <form onsubmit="manualLocationUpdate(event)">
+      <label for="manual-lat">Latitude:</label>
+      <input type="text" id="manual-lat" placeholder="Enter Latitude" />
+
+      <label for="manual-lng">Longitude:</label>
+      <input type="text" id="manual-lng" placeholder="Enter Longitude" />
+
+      <button type="submit">Update Location</button>
+    </form>
+
+    <div id="location-info">
+      <h3>Location Details</h3>
+      <p><strong>Address:</strong> <span id="location-address">Waiting for location...</span></p>
+      <p><strong>Name:</strong> <span id="location-name">Waiting for place details...</span></p>
+      <p><strong>Place Type:</strong> <span id="location-type">Waiting for place details...</span></p>
+    </div>
+
+    <script>
+      window.onload = initMap;
+    </script>
+  </body>
+</html>
