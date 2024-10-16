@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Find Nearby Places</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
+    <script>
+      var map;
+      var service;
+      var geocoder;
+      var currentLocation = { lat: 0, lng: 0 };
+      var placesWithDistance = [];
+
+      function initMap() {
+        // Initialize the map centered on a default location
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 15,
+          center: { lat: -34.397, lng: 150.644 },
+        });
+
+        // Initialize geocoder
+        geocoder = new google.maps.Geocoder();
+
+        // Get the user's current location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (position) {
+              currentLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+              map.setCenter(currentLocation);
+
+              // Show the current location on the map
+              new google.maps.Marker({
+                position: currentLocation,
+                map: map,
+                title: 'You are here',
+              });
+
+              // Get the name of the current location
+              getCurrentLocationName(currentLocation);
+
+              // Find nearby places of interest
+              findNearbyPlaces(currentLocation);
+            },
+            function () {
+              handleLocationError(true, map.getCenter());
+            }
+          );
+        } else {
+          handleLocationError(false, map.getCenter());
+        }
+      }
+
+      // Get the name of the current location using reverse geocoding
+      function getCurrentLocationName(location) {
+        geocoder.geocode({ location: location }, function (results, status) {
+          if (status === 'OK') {
+            if (results[0]) {
+              var currentLocationName = results[0].formatted_address;
+              displayCurrentLocation(currentLocationName);
+            } else {
+              displayCurrentLocation("No address found");
+            }
+          } else {
+            displayCurrentLocation("Geocoder failed: " + status);
+          }
+        });
+      }
+
+      function displayCurrentLocation(locationName) {
+        var placesList = document.getElementById('places-list');
+        placesList.innerHTML = ''; // Clear the previous list
+        var listItem = document.createElement('li');
+        listItem.innerHTML = '<strong>Your Current Location:</strong> ' + locationName;
+        placesList.appendChild(listItem);
+      }
+
+      function findNearbyPlaces(location) {
+        var radius = document.getElementById("radius").value || 1500; // Default to 1500 meters
+        var placeType = document.getElementById("place-type").value || "restaurant"; // Default to restaurant
+
+        var request = {
+          location: location,
+          radius: radius,
+          type: [placeType],
+        };
+
+        service = new google.maps.places.PlacesService(map);
+        service.nearbySearch(request, function (results, status) {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            placesWithDistance = []; // Reset the places array
+
+            // Calculate distance for each place and store it
+            for (var i = 0; i < results.length; i++) {
+              var place = results[i];
+              var distance = calculateDistance(
+                currentLocation.lat,
+                currentLocation.lng,
+                place.geometry.location.lat(),
+                place.geometry.location.lng()
+              );
+              placesWithDistance.push({
+                name: place.name,
+                vicinity: place.vicinity,
+                distance: distance,
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+              });
+            }
+
+            // Sort the places by distance
+            placesWithDistance.sort(function (a, b) {
+              return a.distance - b.distance;
+            });
+
+            // Display the sorted places in the list
+            displayPlaces(placesWithDistance);
+          }
+        });
+      }
+
+      function displayPlaces(places) {
+        var placesList = document.getElementById('places-list');
+        placesList.innerHTML = ''; // Clear the previous list
+
+        places.forEach(function (place, index) {
+          var listItem = document.createElement('li');
+          listItem.innerHTML = `
+            <input type="radio" name="place" value="${index}" id="place${index}">
+            <label for="place${index}">${place.name} - ${place.vicinity} (${place.distance.toFixed(2)} km)</label>
+          `;
+          placesList.appendChild(listItem);
+        });
+      }
+
+      // Haversine formula to calculate the distance between two points in km
+      function calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // Radius of the Earth in km
+        const dLat = degToRad(lat2 - lat1);
+        const dLng = degToRad(lng2 - lng1);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c; // Distance in km
+        return distance;
+      }
+
+      function degToRad(deg) {
+        return deg * (Math.PI / 180);
+      }
+
+      function handleLocationError(browserHasGeolocation, pos) {
+        alert(
+          browserHasGeolocation
+            ? 'Error: The Geolocation service failed.'
+            : "Error: Your browser doesn't support geolocation."
+        );
+      }
+
+      // Trigger search when form is submitted
+      function handleSearch(e) {
+        e.preventDefault();
+        // Clear the list before a new search
+        document.getElementById('places-list').innerHTML = '';
+        findNearbyPlaces(currentLocation);
+      }
+
+      // Handle form submission to send the selected place's latitude and longitude
+      function handleSubmit(e) {
+        e.preventDefault();
+        var selectedPlaceIndex = document.querySelector('input[name="place"]:checked');
+        
+        if (selectedPlaceIndex) {
+          var selectedPlace = placesWithDistance[selectedPlaceIndex.value];
+          var latitude = selectedPlace.lat;
+          var longitude = selectedPlace.lng;
+
+          // Send the latitude and longitude to an API
+          fetch('https://your-backend-api.com/post-location', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              latitude: latitude,
+              longitude: longitude,
+            }),
+          })
+          .then(response => response.json())
+          .then(data => console.log('Success:', data))
+          .catch(error => console.error('Error:', error));
+        } else {
+          alert("Please select a place first!");
+        }
+      }
+    </script>
+    <style>
+      #map {
+        height: 400px;
+        width: 100%;
+      }
+
+      ul {
+        margin-top: 20px;
+        padding-left: 0;
+      }
+
+      li {
+        list-style: none;
+        padding: 8px;
+        border-bottom: 1px solid #ccc;
+      }
+
+      form {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Nearby Places Finder</h1>
+    <div id="map"></div>
+
+    <form onsubmit="handleSearch(event)">
+      <label for="radius">Radius (meters):</label>
+      <input type="number" id="radius" name="radius" placeholder="Enter radius in meters" />
+
+      <label for="place-type">Place Type:</label>
+      <select id="place-type">
+        <option value="restaurant">Restaurant</option>
+        <option value="cafe">Cafe</option>
+        <option value="bar">Bar</option>
+        <option value="tourist_attraction">Tourist Attraction</option>
+        <option value="store">Store</option>
+        <option value="museum">Museum</option>
+      </select>
+
+      <button type="submit">Search</button>
+    </form>
+
+    <ul id="places-list">
+      <li>Loading nearby places...</li>
+    </ul>
+
+    <form id="submit-form" onsubmit="handleSubmit(event)">
+      <button type="submit">Submit Selected Place</button>
+    </form>
+
+    <script>
+      window.onload = initMap;
+    </script>
+  </body>
+</html>
