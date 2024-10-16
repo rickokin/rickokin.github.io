@@ -69,6 +69,7 @@
 
       function displayCurrentLocation(locationName) {
         var placesList = document.getElementById('places-list');
+        placesList.innerHTML = ''; // Clear the previous list
         var listItem = document.createElement('li');
         listItem.innerHTML = '<strong>Your Current Location:</strong> ' + locationName;
         placesList.appendChild(listItem);
@@ -155,6 +156,8 @@
       // Trigger search when form is submitted
       function handleSearch(e) {
         e.preventDefault();
+        // Clear the list before a new search
+        document.getElementById('places-list').innerHTML = '';
         findNearbyPlaces(currentLocation);
       }
     </script>
