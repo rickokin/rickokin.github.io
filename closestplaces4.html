@@ -9,6 +9,7 @@
       var geocoder;
       var currentLocation = { lat: 0, lng: 0 };
       var placesWithDistance = [];
+      var timestamp = new Date().toISOString();
 
       function initMap() {
         // Initialize the map centered on a default location
@@ -179,7 +180,7 @@
           var longitude = selectedPlace.lng;
 
           // Send the latitude and longitude to an API
-          fetch('https://your-backend-api.com/post-location', {
+          fetch('https://127.0.0.1:5000/post-location', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -187,6 +188,8 @@
             body: JSON.stringify({
               latitude: latitude,
               longitude: longitude,
+              placetype: placeType,
+              timestamp: timestamp
             }),
           })
           .then(response => response.json())
