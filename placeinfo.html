@@ -1,111 +1,75 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Find Place Details by Latitude and LongitudeXX</title>
+    <title>Text Search to Get Place ID</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
     <script>
-      var geocoder;
       var map;
       var service;
 
       function initMap() {
-        geocoder = new google.maps.Geocoder();
-        map = new google.maps.Map(document.createElement('div')); // Map object needed for PlacesService
+        map = new google.maps.Map(document.createElement('div')); // Create a dummy map for PlacesService
       }
 
-      // Get location details (Place ID, name, address, types) based on lat/lng
-      function getLocationDetails(lat, lng) {
-        var latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
-
-        // Geocode the lat/lng to get the address
-        geocoder.geocode({ location: latlng }, function (results, status) {
-          if (status === 'OK') {
-            if (results[0]) {
-              displayLocationInfo(results[0]);
-            } else {
-              alert('No results found.');
-            }
-          } else {
-            alert('Geocoder failed due to: ' + status);
-          }
-        });
-
-        // Use PlacesService to get Place ID and details
-        getPlaceDetails(latlng);
-      }
-
-      // Get Place ID and details (name, address, place types) using PlacesService
-      function getPlaceDetails(latlng) {
+      // Function to perform a textSearch and get Place ID
+      function getPlaceIdFromText(query) {
         service = new google.maps.places.PlacesService(map);
         var request = {
-          location: latlng,
-          radius: '10', // Small radius to get the specific place at the coordinates
+          query: query, // Text-based query (could be a name, address, or keyword)
         };
 
-        service.nearbySearch(request, function (results, status) {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+        service.textSearch(request, function (results, status) {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            // Display the first result's Place ID, name, and address
             var place = results[0];
             displayPlaceDetails(place);
           } else {
-            document.getElementById('place-id').innerText = 'No Place ID found for this location.';
+            document.getElementById('place-id').innerText = 'No Place ID found for this query.';
+            document.getElementById('place-name').innerText = 'No Place Name available.';
+            document.getElementById('place-address').innerText = 'No Place Address available.';
           }
         });
       }
 
-      // Display address info
-      function displayLocationInfo(location) {
-        document.getElementById('location-address').innerText = location.formatted_address;
-      }
-
-      // Display place details (Place ID, name, types)
+      // Display the place details in the HTML
       function displayPlaceDetails(place) {
-        document.getElementById('place-id').innerText = place.place_id;
-        document.getElementById('place-name').innerText = place.name;
-        document.getElementById('place-types').innerText = place.types ? place.types.join(', ') : 'No types available';
+        document.getElementById('place-id').innerText = place.place_id || 'N/A';
+        document.getElementById('place-name').innerText = place.name || 'N/A';
+        document.getElementById('place-address').innerText = place.formatted_address || 'N/A';
       }
 
-      // Handle form submission to update latitude/longitude
-      function manualLocationUpdate(e) {
+      // Handle form submission
+      function searchByText(e) {
         e.preventDefault();
-        var lat = document.getElementById('manual-lat').value;
-        var lng = document.getElementById('manual-lng').value;
-        getLocationDetails(lat, lng);
+        var query = document.getElementById('query').value;
+        getPlaceIdFromText(query);
       }
     </script>
     <style>
-      #location-info {
-        margin-top: 20px;
-      }
       label {
         display: block;
         margin-top: 10px;
       }
-      #location-details p {
+      #place-details p {
         margin: 5px 0;
       }
     </style>
   </head>
   <body>
-    <h1>Find Place Details by Latitude and Longitude</h1>
+    <h1>Get Place ID Using Text Search</h1>
 
-    <form onsubmit="manualLocationUpdate(event)">
-      <label for="manual-lat">Latitude:</label>
-      <input type="text" id="manual-lat" placeholder="Enter Latitude" required/>
+    <form onsubmit="searchByText(event)">
+      <label for="query">Enter Place Name or Address:</label>
+      <input type="text" id="query" placeholder="E.g., Eiffel Tower, Paris" required />
 
-      <label for="manual-lng">Longitude:</label>
-      <input type="text" id="manual-lng" placeholder="Enter Longitude" required/>
-
-      <button type="submit">Find Place</button>
+      <button type="submit">Get Place ID</button>
     </form>
 
-    <div id="location-info">
-      <h3>Location Details</h3>
-      <div id="location-details">
-        <p><strong>Address:</strong> <span id="location-address">Waiting for location...</span></p>
-        <p><strong>Place ID:</strong> <span id="place-id">Waiting for Place ID...</span></p>
-        <p><strong>Place Name:</strong> <span id="place-name">Waiting for Place Name...</span></p>
-        <p><strong>Place Types:</strong> <span id="place-types">Waiting for Place Types...</span></p>
-      </div>
+    <div id="place-details">
+      <h3>Place Details</h3>
+      <p><strong>Place ID:</strong> <span id="place-id">Waiting for Place ID...</span></p>
+      <p><strong>Place Name:</strong> <span id="place-name">Waiting for Place Name...</span></p>
+      <p><strong>Place Address:</strong> <span id="place-address">Waiting for Place Address...</span></p>
     </div>
 
     <script>
