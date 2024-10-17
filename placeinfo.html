@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Text Search to Get Place ID</title>
+    <title>Find Place by Query</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
     <script>
       var map;
@@ -11,14 +11,15 @@
         map = new google.maps.Map(document.createElement('div')); // Create a dummy map for PlacesService
       }
 
-      // Function to perform a textSearch and get Place ID
+      // Use findPlaceFromQuery to get Place ID, name, address, and types
       function getPlaceIdFromText(query) {
         service = new google.maps.places.PlacesService(map);
         var request = {
           query: query, // Text-based query (could be a name, address, or keyword)
+          fields: ['place_id', 'name', 'formatted_address', 'types'] // Fields to retrieve
         };
 
-        service.textSearch(request, function (results, status) {
+        service.findPlaceFromQuery(request, function (results, status) {
           if (status === google.maps.places.PlacesServiceStatus.OK) {
             // Display the first result's Place ID, name, and address
             var place = results[0];
@@ -36,6 +37,7 @@
         document.getElementById('place-id').innerText = place.place_id || 'N/A';
         document.getElementById('place-name').innerText = place.name || 'N/A';
         document.getElementById('place-address').innerText = place.formatted_address || 'N/A';
+        document.getElementById('place-types').innerText = place.types ? place.types.join(', ') : 'No types available';
       }
 
       // Handle form submission
@@ -56,13 +58,13 @@
     </style>
   </head>
   <body>
-    <h1>Get Place ID Using Text Search</h1>
+    <h1>Find Place by Query</h1>
 
     <form onsubmit="searchByText(event)">
       <label for="query">Enter Place Name or Address:</label>
       <input type="text" id="query" placeholder="E.g., Eiffel Tower, Paris" required />
 
-      <button type="submit">Get Place ID</button>
+      <button type="submit">Get Place Details</button>
     </form>
 
     <div id="place-details">
@@ -70,6 +72,7 @@
       <p><strong>Place ID:</strong> <span id="place-id">Waiting for Place ID...</span></p>
       <p><strong>Place Name:</strong> <span id="place-name">Waiting for Place Name...</span></p>
       <p><strong>Place Address:</strong> <span id="place-address">Waiting for Place Address...</span></p>
+      <p><strong>Place Types:</strong> <span id="place-types">Waiting for Place Types...</span></p>
     </div>
 
     <script>
