@@ -6,7 +6,7 @@
     <title>Submit Data to Supabase</title>
 </head>
 <body>
-    <h1>Submit Data to Supabase ZZ</h1>
+    <h1>Submit Data to Supabase OO</h1>
     
     <!-- Simple Form to Submit Data -->
     <form id="supabaseForm">
@@ -26,7 +26,6 @@
     <div id="responseMessage"></div>
 
     <script>
-        // Handle form submission and connect to Supabase
         document.getElementById('supabaseForm').addEventListener('submit', async function(e) {
             e.preventDefault(); // Prevent form from submitting normally
 
@@ -54,28 +53,30 @@
                     body: JSON.stringify(formData)
                 });
 
-                // Handle response by first checking if there's content
                 const contentLength = response.headers.get('content-length');
 
+                // Check if response is empty and handle accordingly
                 if (!contentLength || contentLength === '0') {
-                    throw new Error('Empty response from the server');
-                }
-
-                const jsonResponse = await response.json();
-
-                if (response.ok) {
-                    document.getElementById('responseMessage').innerText = 'Form submitted successfully!';
+                    if (response.ok) {
+                        // If the response is empty but the request was successful
+                        document.getElementById('responseMessage').innerText = 'Form submitted successfully with no returned content.';
+                    } else {
+                        throw new Error('Server responded with an empty body and an error status.');
+                    }
                 } else {
-                    document.getElementById('responseMessage').innerText = `Error: ${jsonResponse.message || 'Unknown error'}`;
+                    // Parse the response if there's content
+                    const jsonResponse = await response.json();
+
+                    if (response.ok) {
+                        document.getElementById('responseMessage').innerText = 'Form submitted successfully!';
+                        console.log('Inserted data:', jsonResponse);
+                    } else {
+                        document.getElementById('responseMessage').innerText = `Error: ${jsonResponse.message || 'Unknown error'}`;
+                    }
                 }
 
             } catch (error) {
-                // Handle any errors
-                if (error.message === 'Empty response from the server') {
-                    document.getElementById('responseMessage').innerText = 'Error: The server returned an empty response. Please try again later.';
-                } else {
-                    document.getElementById('responseMessage').innerText = `Error: ${error.message}`;
-                }
+                document.getElementById('responseMessage').innerText = `Error: ${error.message}`;
             }
         });
     </script>
