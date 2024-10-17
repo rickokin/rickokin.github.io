@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Find Place by Query</title>
+    <title>Find Restaurants, Cafes, and Stores</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
     <script>
       var map;
@@ -11,33 +11,46 @@
         map = new google.maps.Map(document.createElement('div')); // Create a dummy map for PlacesService
       }
 
-      // Use findPlaceFromQuery to get Place ID, name, address, and types
+      // Use findPlaceFromQuery to get Place ID, name, address, and types for restaurants, cafes, and stores
       function getPlaceIdFromText(query) {
         service = new google.maps.places.PlacesService(map);
         var request = {
           query: query, // Text-based query (could be a name, address, or keyword)
-          fields: ['place_id', 'name', 'formatted_address', 'types'] // Fields to retrieve
+          fields: ['place_id', 'name', 'formatted_address', 'types'], // Fields to retrieve
         };
 
-        service.findPlaceFromQuery(request, function (results, status) {
+        service.textSearch(request, function (results, status) {
           if (status === google.maps.places.PlacesServiceStatus.OK) {
-            // Display the first result's Place ID, name, and address
-            var place = results[0];
-            displayPlaceDetails(place);
+            // Filter results for restaurants, cafes, and stores
+            var filteredResults = results.filter(function (place) {
+              return (
+                place.types.includes('restaurant') ||
+                place.types.includes('cafe') ||
+                place.types.includes('store')
+              );
+            });
+
+            if (filteredResults.length > 0) {
+              displayPlaceDetails(filteredResults);
+            } else {
+              document.getElementById('place-list').innerHTML = 'No matching restaurants, cafes, or stores found.';
+            }
           } else {
-            document.getElementById('place-id').innerText = 'No Place ID found for this query.';
-            document.getElementById('place-name').innerText = 'No Place Name available.';
-            document.getElementById('place-address').innerText = 'No Place Address available.';
+            document.getElementById('place-list').innerHTML = 'No results found.';
           }
         });
       }
 
-      // Display the place details in the HTML
-      function displayPlaceDetails(place) {
-        document.getElementById('place-id').innerText = place.place_id || 'N/A';
-        document.getElementById('place-name').innerText = place.name || 'N/A';
-        document.getElementById('place-address').innerText = place.formatted_address || 'N/A';
-        document.getElementById('place-types').innerText = place.types ? place.types.join(', ') : 'No types available';
+      // Display the place details (name and types) in the HTML
+      function displayPlaceDetails(places) {
+        var placeList = document.getElementById('place-list');
+        placeList.innerHTML = ''; // Clear previous results
+
+        places.forEach(function (place) {
+          var listItem = document.createElement('li');
+          listItem.innerHTML = `<strong>${place.name}</strong> - Types: ${place.types.join(', ')}`;
+          placeList.appendChild(listItem);
+        });
       }
 
       // Handle form submission
@@ -52,28 +65,24 @@
         display: block;
         margin-top: 10px;
       }
-      #place-details p {
+      #place-list li {
         margin: 5px 0;
       }
     </style>
   </head>
   <body>
-    <h1>Find Place by Query</h1>
+    <h1>Find Restaurants, Cafes, and Stores</h1>
 
     <form onsubmit="searchByText(event)">
       <label for="query">Enter Place Name or Address:</label>
-      <input type="text" id="query" placeholder="E.g., Eiffel Tower, Paris" required />
+      <input type="text" id="query" placeholder="E.g., New York, Times Square" required />
 
-      <button type="submit">Get Place Details</button>
+      <button type="submit">Search</button>
     </form>
 
-    <div id="place-details">
-      <h3>Place Details</h3>
-      <p><strong>Place ID:</strong> <span id="place-id">Waiting for Place ID...</span></p>
-      <p><strong>Place Name:</strong> <span id="place-name">Waiting for Place Name...</span></p>
-      <p><strong>Place Address:</strong> <span id="place-address">Waiting for Place Address...</span></p>
-      <p><strong>Place Types:</strong> <span id="place-types">Waiting for Place Types...</span></p>
-    </div>
+    <ul id="place-list">
+      <li>Waiting for results...</li>
+    </ul>
 
     <script>
       window.onload = initMap;
