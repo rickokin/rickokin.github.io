@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Get Place Details by Place ID</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
+    <script>
+      var map;
+      var service;
+
+      function initMap() {
+        map = new google.maps.Map(document.createElement('div')); // Create a dummy map for PlacesService
+      }
+
+      // Get place details using the Place ID
+      function getPlaceDetails(placeId) {
+        service = new google.maps.places.PlacesService(map);
+
+        var request = {
+          placeId: placeId,
+          fields: ['name', 'formatted_address', 'types', 'website', 'formatted_phone_number', 'opening_hours', 'rating', 'reviews', 'url'] // Add more fields if needed
+        };
+
+        service.getDetails(request, function (place, status) {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            displayPlaceDetails(place);
+          } else {
+            document.getElementById('place-details').innerHTML = 'No details found for this Place ID.';
+          }
+        });
+      }
+
+      // Display the place details in the HTML
+      function displayPlaceDetails(place) {
+        var placeDetails = document.getElementById('place-details');
+        placeDetails.innerHTML = `
+          <strong>Name:</strong> ${place.name || 'N/A'}<br>
+          <strong>Address:</strong> ${place.formatted_address || 'N/A'}<br>
+          <strong>Types:</strong> ${place.types ? place.types.join(', ') : 'N/A'}<br>
+          <strong>Website:</strong> ${place.website ? `<a href="${place.website}" target="_blank">${place.website}</a>` : 'N/A'}<br>
+          <strong>Phone:</strong> ${place.formatted_phone_number || 'N/A'}<br>
+          <strong>Rating:</strong> ${place.rating || 'N/A'}<br>
+          <strong>Reviews:</strong> ${place.reviews ? place.reviews.length + ' available' : 'No reviews available'}<br>
+          <strong>Google Maps URL:</strong> <a href="${place.url}" target="_blank">View on Google Maps</a><br>
+          <strong>Opening Hours:</strong><br>
+          ${place.opening_hours ? place.opening_hours.weekday_text.join('<br>') : 'No opening hours available'}
+        `;
+      }
+
+      // Handle form submission
+      function fetchPlaceDetails(e) {
+        e.preventDefault();
+        var placeId = document.getElementById('place-id').value;
+        getPlaceDetails(placeId);
+      }
+    </script>
+    <style>
+      label {
+        display: block;
+        margin-top: 10px;
+      }
+      #place-details {
+        margin-top: 20px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        width: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Find Place Details by Google Place ID</h1>
+
+    <form onsubmit="fetchPlaceDetails(event)">
+      <label for="place-id">Enter Google Place ID:</label>
+      <input type="text" id="place-id" placeholder="Enter Google Place ID" required />
+
+      <button type="submit">Get Place Details</button>
+    </form>
+
+    <div id="place-details">
+      <p>Waiting for place details...</p>
+    </div>
+
+    <script>
+      window.onload = initMap;
+    </script>
+  </body>
+</html>
