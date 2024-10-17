@@ -6,7 +6,7 @@
     <title>Submit Data to Supabase</title>
 </head>
 <body>
-    <h1>Submit Data to Supabase YY</h1>
+    <h1>Submit Data to Supabase ZZ</h1>
     
     <!-- Simple Form to Submit Data -->
     <form id="supabaseForm">
@@ -49,7 +49,7 @@
                         'Content-Type': 'application/json',
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Prefer': 'return=representation' // Request that the inserted data is returned
+                        'Prefer': 'return=minimal' 
                     },
                     body: JSON.stringify(formData)
                 });
