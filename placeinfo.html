@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Location Finder with Place Details</title>
+    <title>Location Finder with Place Types</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
     <script>
       var geocoder;
@@ -11,7 +11,7 @@
 
       function initMap() {
         geocoder = new google.maps.Geocoder();
-        map = new google.maps.Map(document.createElement('div')); // We need a map object for the PlacesService
+        map = new google.maps.Map(document.createElement('div')); // Need a map object for the PlacesService
 
         // Try to get the user's current location
         if (navigator.geolocation) {
@@ -49,31 +49,23 @@
           }
         });
 
-        getPlaceDetails(latlng);
+        getPlaceTypes(latlng);
       }
 
-      function getPlaceDetails(latlng) {
+      // Use PlacesService to get place types
+      function getPlaceTypes(latlng) {
         service = new google.maps.places.PlacesService(map);
         var request = {
           location: latlng,
-          radius: '10', // Small radius to get the place details of the given location
+          radius: '10', // Small radius around the coordinates
         };
 
         service.nearbySearch(request, function (results, status) {
           if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
-            var placeId = results[0].place_id;
-
-            // Get more detailed information about the place using its Place ID
-            var requestDetails = {
-              placeId: placeId,
-              fields: ['name', 'formatted_address', 'types', 'rating', 'opening_hours', 'website'],
-            };
-
-            service.getDetails(requestDetails, function (place, status) {
-              if (status === google.maps.places.PlacesServiceStatus.OK) {
-                displayPlaceDetails(place);
-              }
-            });
+            var place = results[0];
+            displayPlaceTypes(place.types);
+          } else {
+            document.getElementById('location-types').innerText = 'No place types found for this location.';
           }
         });
       }
@@ -82,16 +74,12 @@
         document.getElementById('location-address').innerText = location.formatted_address;
       }
 
-      function displayPlaceDetails(place) {
-        document.getElementById('location-name').innerText = place.name || 'N/A';
-        document.getElementById('location-type').innerText = place.types ? place.types.join(', ') : 'N/A';
-        document.getElementById('location-rating').innerText = place.rating ? place.rating + ' / 5' : 'No rating';
-        document.getElementById('location-hours').innerText = place.opening_hours
-          ? place.opening_hours.weekday_text.join(', ')
-          : 'No opening hours available';
-        document.getElementById('location-website').innerHTML = place.website
-          ? `<a href="${place.website}" target="_blank">${place.website}</a>`
-          : 'No website available';
+      function displayPlaceTypes(types) {
+        if (types && types.length > 0) {
+          document.getElementById('location-types').innerText = types.join(', ');
+        } else {
+          document.getElementById('location-types').innerText = 'No place types found.';
+        }
       }
 
       function manualLocationUpdate(e) {
@@ -115,7 +103,7 @@
     </style>
   </head>
   <body>
-    <h1>Location Finder with Place Details</h1>
+    <h1>Location Finder with Place Types</h1>
 
     <form onsubmit="manualLocationUpdate(event)">
       <label for="manual-lat">Latitude:</label>
@@ -131,11 +119,7 @@
       <h3>Location Details</h3>
       <div id="location-details">
         <p><strong>Address:</strong> <span id="location-address">Waiting for location...</span></p>
-        <p><strong>Name:</strong> <span id="location-name">Waiting for place details...</span></p>
-        <p><strong>Place Type:</strong> <span id="location-type">Waiting for place details...</span></p>
-        <p><strong>Rating:</strong> <span id="location-rating">Waiting for rating...</span></p>
-        <p><strong>Opening Hours:</strong> <span id="location-hours">Waiting for hours...</span></p>
-        <p><strong>Website:</strong> <span id="location-website">Waiting for website...</span></p>
+        <p><strong>Place Types:</strong> <span id="location-types">Waiting for place types...</span></p>
       </div>
     </div>
 
