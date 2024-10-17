@@ -41,14 +41,19 @@
         });
       }
 
-      // Display the place details (name and types) in the HTML
+      // Display the place details (Place ID, name, address, and types) in the HTML
       function displayPlaceDetails(places) {
         var placeList = document.getElementById('place-list');
         placeList.innerHTML = ''; // Clear previous results
 
         places.forEach(function (place) {
           var listItem = document.createElement('li');
-          listItem.innerHTML = `<strong>${place.name}</strong> - Types: ${place.types.join(', ')}`;
+          listItem.innerHTML = `
+            <strong>Name:</strong> ${place.name} <br>
+            <strong>Place ID:</strong> ${place.place_id} <br>
+            <strong>Address:</strong> ${place.formatted_address} <br>
+            <strong>Types:</strong> ${place.types.join(', ')}
+          `;
           placeList.appendChild(listItem);
         });
       }
@@ -66,7 +71,10 @@
         margin-top: 10px;
       }
       #place-list li {
-        margin: 5px 0;
+        margin: 15px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+        list-style: none;
       }
     </style>
   </head>
