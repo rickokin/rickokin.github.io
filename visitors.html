@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit Form to Supabase</title>
+    <title>Submit Data to Supabase2</title>
 </head>
 <body>
     <h1>Submit Data to Supabase</h1>
+    
+    <!-- Simple Form to Submit Data -->
     <form id="supabaseForm">
         <label for="name">Name:</label>
         <input type="text" id="name" name="name" required><br><br>
@@ -20,9 +22,11 @@
         <button type="submit">Submit</button>
     </form>
 
+    <!-- Placeholder for response message -->
     <div id="responseMessage"></div>
 
     <script>
+        // Handle form submission and connect to Supabase
         document.getElementById('supabaseForm').addEventListener('submit', async function(e) {
             e.preventDefault(); // Prevent form from submitting normally
 
@@ -33,7 +37,7 @@
                 message: document.getElementById('message').value
             };
 
-            // Supabase API details
+            // Supabase API details (Replace with your actual project info)
             const SUPABASE_URL = 'https://clvzguioggiejseuaeuv.supabase.co'; // Replace with your Supabase URL
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsdnpndWlvZ2dpZWpzZXVhZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxOTY0MzUsImV4cCI6MjA0NDc3MjQzNX0.HWJXObwLmCa-cR6en_SS8bUd1BI2M5eQsej3_BqZ4vQ'; // Replace with your Anon Key
 
@@ -49,12 +53,22 @@
                     body: JSON.stringify(formData)
                 });
 
-                const result = await response.json();
+                // Handle response by first checking if there's content
+                const textResponse = await response.text();
+
+                if (!textResponse) {
+                    throw new Error('Empty response from the server');
+                }
+
+                // Try to parse the JSON if there is a valid response
+                const jsonResponse = JSON.parse(textResponse);
+
                 if (response.ok) {
                     document.getElementById('responseMessage').innerText = 'Form submitted successfully!';
                 } else {
-                    document.getElementById('responseMessage').innerText = `Error: ${result.message}`;
+                    document.getElementById('responseMessage').innerText = `Error: ${jsonResponse.message || 'Unknown error'}`;
                 }
+
             } catch (error) {
                 document.getElementById('responseMessage').innerText = `Error: ${error.message}`;
             }
