@@ -2,9 +2,306 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Find Nearby Places</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places&callback=initMap" async defer></script>
+    <script>
+      var map;
+      var service;
+      var geocoder;
+      var currentLocation = { lat: 0, lng: 0 };
+      var placesWithDistance = [];
+      var timestamp = new Date().toISOString();
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 15,
+          center: { lat: -34.397, lng: 150.644 },
+        });
+
+        geocoder = new google.maps.Geocoder();
+
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (position) {
+              currentLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+              map.setCenter(currentLocation);
+
+              new google.maps.Marker({
+                position: currentLocation,
+                map: map,
+                title: 'You are here',
+              });
+
+              getCurrentLocationName(currentLocation);
+              findNearbyPlaces(currentLocation);
+            },
+            function () {
+              handleLocationError(true, map.getCenter());
+            }
+          );
+        } else {
+          handleLocationError(false, map.getCenter());
+        }
+      }
+
+      function getCurrentLocationName(location) {
+        geocoder.geocode({ location: location }, function (results, status) {
+          if (status === 'OK') {
+            if (results[0]) {
+              var currentLocationName = results[0].formatted_address;
+              displayCurrentLocation(currentLocationName);
+            } else {
+              displayCurrentLocation("No address found");
+            }
+          } else {
+            displayCurrentLocation("Geocoder failed: " + status);
+          }
+        });
+      }
+
+      function displayCurrentLocation(locationName) {
+        var placesList = document.getElementById('places-list');
+        placesList.innerHTML = ''; 
+        var listItem = document.createElement('li');
+        listItem.innerHTML = '<strong>Your Current Location:</strong> ' + locationName;
+        placesList.appendChild(listItem);
+      }
+
+      function findNearbyPlaces(location) {
+        var radius = document.getElementById("radius").value || 1500;
+        var placeType = document.getElementById("place-type").value || "restaurant";
+
+        var request = {
+          location: location,
+          radius: radius,
+          type: [placeType],
+        };
+
+        service = new google.maps.places.PlacesService(map);
+        service.nearbySearch(request, function (results, status) {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            placesWithDistance = [];
+
+            for (var i = 0; i < results.length; i++) {
+              var place = results[i];
+              var distance = calculateDistance(
+                currentLocation.lat,
+                currentLocation.lng,
+                place.geometry.location.lat(),
+                place.geometry.location.lng()
+              );
+              placesWithDistance.push({
+                name: place.name,
+                vicinity: place.vicinity,
+                distance: distance,
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+              });
+            }
+
+            placesWithDistance.sort(function (a, b) {
+              return a.distance - b.distance;
+            });
+
+            displayPlaces(placesWithDistance);
+          }
+        });
+      }
+
+      function displayPlaces(places) {
+        var placesList = document.getElementById('places-list');
+        placesList.innerHTML = '';
+
+        places.forEach(function (place, index) {
+          var listItem = document.createElement('li');
+          listItem.innerHTML = `
+            <input type="radio" name="place" value="${index}" id="place${index}">
+            <label for="place${index}">${place.name} - ${place.vicinity} (${place.distance.toFixed(2)} km)</label>
+          `;
+          placesList.appendChild(listItem);
+        });
+      }
+
+      function calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; 
+        const dLat = degToRad(lat2 - lat1);
+        const dLng = degToRad(lng2 - lng1);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+        return distance;
+      }
+
+      function degToRad(deg) {
+        return deg * (Math.PI / 180);
+      }
+
+      function handleLocationError(browserHasGeolocation, pos) {
+        alert(
+          browserHasGeolocation
+            ? 'Error: The Geolocation service failed.'
+            : "Error: Your browser doesn't support geolocation."
+        );
+      }
+
+      async function handleSubmit(e) {
+        e.preventDefault();
+        var selectedPlaceIndex = document.querySelector('input[name="place"]:checked');
+        
+        if (selectedPlaceIndex) {
+          var selectedPlace = placesWithDistance[selectedPlaceIndex.value];
+          var latitude = selectedPlace.lat;
+          var longitude = selectedPlace.lng;
+          var placeName = selectedPlace.name;
+          var placeType = document.getElementById("place-type").value || "restaurant";
+
+          // Use Google Maps Geocoding API to get the address and Place ID for the selected place
+          var geocodeRequest = {
+            latLng: { lat: latitude, lng: longitude },
+          };
+
+          geocoder.geocode(geocodeRequest, async function(results, status) {
+            if (status === 'OK' && results[0]) {
+              var address = results[0].formatted_address;
+              var placeId = results[0].place_id;
+
+              // Prepare the data to be inserted into Supabase
+              var data = {
+                timestamp: new Date().toISOString(),
+                placetype: placeType,
+                name: placeName,
+                address: address,
+                placeid: placeId,
+                latitude: latitude,
+                longitude: longitude
+              };
+
+              // Send data to Supabase
+              try {
+                const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT.supabase.co'; // Replace with your Supabase URL
+                const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase Anon Key
+
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/your_table_name`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Prefer': 'return=representation'
+                  },
+                  body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                  const jsonResponse = await response.json();
+                  document.getElementById('responseMessage').innerText = 'Place submitted successfully!';
+                  console.log('Inserted data:', jsonResponse);
+                } else {
+                  throw new Error('Failed to insert data.');
+                }
+              } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('responseMessage').innerText = 'Error submitting data.';
+              }
+            } else {
+              alert("Failed to retrieve address or Place ID.");
+            }
+          });
+        } else {
+          alert("Please select a place first!");
+        }
+      }
+    </script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      h1 {
+        text-align: center;
+        padding: 20px;
+      }
+
+      #map {
+        height: 300px;
+        width: 100%;
+      }
+
+      ul {
+        margin-top: 20px;
+        padding-left: 0;
+      }
+
+      li {
+        list-style: none;
+        padding: 8px;
+        border-bottom: 1px solid #ccc;
+      }
+
+      form {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      form label {
+        margin-bottom: 5px;
+      }
+
+      form input, form select, form button {
+        margin-bottom: 10px;
+        width: 80%;
+        padding: 8px;
+        font-size: 16px;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 24px;
+          padding: 10px;
+        }
+
+        #map {
+          height: 250px;
+        }
+
+        form input, form select, form button {
+          width: 90%;
+        }
+
+        ul {
+          padding-left: 10px;
+        }
+
+        li {
+          font-size: 14px;
+        }
+      }
+    </style>
+ Here is the **complete updated HTML code** that allows users to select a nearby place and submit the selected place's details to a **Supabase PostgreSQL** table using their **RESTful API**. The code will capture the timestamp, placetype, name, address, placeid, latitude, and longitude.
+
+### Updated HTML Code:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Find Nearby Places</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&callback=initMap" async defer></script>
     <script>
       var map;
       var service;
@@ -292,3 +589,4 @@
     <h1>Nearby Places Finder</h1>
     <div id="map"></div>
 
+    <form on
