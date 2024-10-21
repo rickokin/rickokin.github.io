@@ -1,296 +1,217 @@
-
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Find Nearby Places</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&callback=initMap" async defer></script>
-    <script>
-      var map;
-      var service;
-      var geocoder;
-      var currentLocation = { lat: 0, lng: 0 };
-      var placesWithDistance = [];
-      var timestamp = new Date().toISOString();
-
-      function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 15,
-          center: { lat: -34.397, lng: 150.644 },
-        });
-
-        geocoder = new google.maps.Geocoder();
-
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            function (position) {
-              currentLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-              };
-              map.setCenter(currentLocation);
-
-              new google.maps.Marker({
-                position: currentLocation,
-                map: map,
-                title: 'You are here',
-              });
-
-              getCurrentLocationName(currentLocation);
-              findNearbyPlaces(currentLocation);
-            },
-            function () {
-              handleLocationError(true, map.getCenter());
-            }
-          );
-        } else {
-          handleLocationError(false, map.getCenter());
-        }
-      }
-
-      function getCurrentLocationName(location) {
-        geocoder.geocode({ location: location }, function (results, status) {
-          if (status === 'OK' && results[0]) {
-            var currentLocationName = results[0].formatted_address;
-            displayCurrentLocation(currentLocationName);
-          } else {
-            displayCurrentLocation("No address found");
-          }
-        });
-      }
-
-      function displayCurrentLocation(locationName) {
-        var placesList = document.getElementById('places-list');
-        placesList.innerHTML = ''; 
-        var listItem = document.createElement('li');
-        listItem.innerHTML = '<strong>Your Current Location:</strong> ' + locationName;
-        placesList.appendChild(listItem);
-      }
-
-      function findNearbyPlaces(location) {
-        var radius = document.getElementById("radius").value || 1500;
-        var placeType = document.getElementById("place-type").value || "restaurant";
-
-        var request = {
-          location: location,
-          radius: radius,
-          type: [placeType],
-        };
-
-        service = new google.maps.places.PlacesService(map);
-        service.nearbySearch(request, function (results, status) {
-          if (status === google.maps.places.PlacesServiceStatus.OK) {
-            placesWithDistance = [];
-
-            for (var i = 0; i < results.length; i++) {
-              var place = results[i];
-              var distance = calculateDistance(
-                currentLocation.lat,
-                currentLocation.lng,
-                place.geometry.location.lat(),
-                place.geometry.location.lng()
-              );
-              placesWithDistance.push({
-                name: place.name,
-                vicinity: place.vicinity,
-                distance: distance,
-                lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng(),
-              });
-            }
-
-            placesWithDistance.sort(function (a, b) {
-              return a.distance - b.distance;
-            });
-
-            displayPlaces(placesWithDistance);
-          }
-        });
-      }
-
-      function displayPlaces(places) {
-        var placesList = document.getElementById('places-list');
-        placesList.innerHTML = '';
-
-        places.forEach(function (place, index) {
-          var listItem = document.createElement('li');
-          listItem.innerHTML = `
-            <input type="radio" name="place" value="${index}" id="place${index}">
-            <label for="place${index}">${place.name} - ${place.vicinity} (${place.distance.toFixed(2)} km)</label>
-          `;
-          placesList.appendChild(listItem);
-        });
-      }
-
-      function calculateDistance(lat1, lng1, lat2, lng2) {
-        const R = 6371; 
-        const dLat = degToRad(lat2 - lat1);
-        const dLng = degToRad(lng2 - lng1);
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(degToRad(lat1)) * Math.cos(degToRad(lat2)) *
-          Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = R * c;
-        return distance;
-      }
-
-      function degToRad(deg) {
-        return deg * (Math.PI / 180);
-      }
-
-      function handleLocationError(browserHasGeolocation, pos) {
-        alert(
-          browserHasGeolocation
-            ? 'Error: The Geolocation service failed.'
-            : "Error: Your browser doesn't support geolocation."
-        );
-      }
-
-      async function handleSubmit(e) {
-        e.preventDefault();
-        var selectedPlaceIndex = document.querySelector('input[name="place"]:checked');
-        
-        if (selectedPlaceIndex) {
-          var selectedPlace = placesWithDistance[selectedPlaceIndex.value];
-          var latitude = selectedPlace.lat;
-          var longitude = selectedPlace.lng;
-          var placeName = selectedPlace.name;
-          var placeType = document.getElementById("place-type").value || "restaurant";
-
-          // Use Google Maps Geocoding API to get the address and Place ID for the selected place
-          var geocodeRequest = {
-            latLng: { lat: latitude, lng: longitude },
-          };
-
-          geocoder.geocode(geocodeRequest, async function(results, status) {
-            if (status === 'OK' && results[0]) {
-              var address = results[0].formatted_address;
-              var placeId = results[0].place_id;
-
-              // Prepare the data to be inserted into Supabase
-              var data = {
-                timestamp: new Date().toISOString(),
-                placetype: placeType,
-                name: placeName,
-                address: address,
-                placeid: placeId,
-                latitude: latitude,
-                longitude: longitude
-              };
-
-              // Send data to Supabase
-              try {
-                const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT.supabase.co'; // Replace with your Supabase URL
-                const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase Anon Key
-
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/your_table_name`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Prefer': 'return=representation'
-                  },
-                  body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                  const jsonResponse = await response.json();
-                  document.getElementById('responseMessage').innerText = 'Place submitted successfully!';
-                  console.log('Inserted data:', jsonResponse);
-                } else {
-                  throw new Error('Failed to insert data.');
-                }
-              } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('responseMessage').innerText = 'Error submitting data.';
-              }
-            } else {
-              alert("Failed to retrieve address or Place ID.");
-            }
-          });
-        } else {
-          alert("Please select a place first!");
-        }
-      }
-    </script>
-
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nearby Places Finder</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&&libraries=places&callback=initMap" async defer></script>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      h1 {
-        text-align: center;
-        padding: 20px;
-      }
-
-      #map {
-        height: 300px;
-        width: 100%;
-      }
-
-      ul {
-        margin-top: 20px;
-        padding-left: 0;
-      }
-
-      li {
-        list-style: none;
-        padding: 8px;
-        border-bottom: 1px solid #ccc;
-      }
-
-      form {
-        margin-top: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      form label {
-        margin-bottom: 5px;
-      }
-
-      form input, form select, form button {
-        margin-bottom: 10px;
-        width: 80%;
-        padding: 8px;
-        font-size: 16px;
-      }
-
-      @media (max-width: 768px) {
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         h1 {
-          font-size: 24px;
-          padding: 10px;
+            text-align: center;
+            padding: 10px;
         }
-
         #map {
-          height: 250px;
+            height: 300px;
+            width: 100%;
         }
-
+        form, ul {
+            margin: 20px 10px;
+        }
         form input, form select, form button {
-          width: 90%;
+            margin: 10px 0;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
         }
-
         ul {
-          padding-left: 10px;
+            list-style: none;
+            padding: 0;
         }
-
         li {
-          font-size: 14px;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
         }
-      }
+        li label {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 24px;
+            }
+            #map {
+                height: 250px;
+            }
+        }
     </style>
-  </head>
-
-  <body>
-    <h1>Nearby Places FinderXX</h1>
+</head>
+<body>
+    <h1>Nearby Places FinderZZZ</h1>
     <div id="map"></div>
 
-    <form on
+    <form id="searchForm">
+        <label for="radius">Enter Radius (feet):</label>
+        <input type="number" id="radius" placeholder="Enter radius in feet" required>
+
+        <label for="placeType">Place Type:</label>
+        <select id="placeType" required>
+            <option value="restaurant">Restaurant</option>
+            <option value="cafe">Cafe</option>
+            <option value="bar">Bar</option>
+            <option value="store">Store</option>
+            <option value="museum">Museum</option>
+        </select>
+
+        <button type="submit">Search</button>
+    </form>
+
+    <ul id="places-list">
+        <li>Loading nearby places...</li>
+    </ul>
+
+    <form id="submitForm">
+        <button type="submit">Submit Selected Place</button>
+    </form>
+
+    <div id="responseMessage"></div>
+
+    <script>
+        var map, service, geocoder, currentLocation = { lat: 0, lng: 0 };
+        var placesWithDistance = [];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: { lat: -34.397, lng: 150.644 }
+            });
+            geocoder = new google.maps.Geocoder();
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    currentLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    map.setCenter(currentLocation);
+                    new google.maps.Marker({
+                        position: currentLocation,
+                        map: map,
+                        title: 'You are here'
+                    });
+                });
+            } else {
+                alert('Geolocation not supported by your browser.');
+            }
+        }
+
+        document.getElementById('searchForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var radiusInFeet = document.getElementById('radius').value;
+            var radiusInMeters = radiusInFeet * 0.3048; // Convert feet to meters
+            var placeType = document.getElementById('placeType').value;
+
+            findNearbyPlaces(currentLocation, radiusInMeters, placeType);
+        });
+
+        function findNearbyPlaces(location, radius, placeType) {
+            var request = {
+                location: location,
+                radius: radius,
+                type: [placeType]
+            };
+            service = new google.maps.places.PlacesService(map);
+            service.nearbySearch(request, function (results, status) {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    placesWithDistance = [];
+                    results.forEach(function (place) {
+                        var distance = calculateDistance(currentLocation.lat, currentLocation.lng, place.geometry.location.lat(), place.geometry.location.lng());
+                        placesWithDistance.push({
+                            name: place.name,
+                            vicinity: place.vicinity,
+                            distance: distance,
+                            lat: place.geometry.location.lat(),
+                            lng: place.geometry.location.lng(),
+                            placeId: place.place_id,
+                            type: placeType
+                        });
+                    });
+                    placesWithDistance.sort(function (a, b) { return a.distance - b.distance; });
+                    displayPlaces(placesWithDistance);
+                }
+            });
+        }
+
+        function displayPlaces(places) {
+            var placesList = document.getElementById('places-list');
+            placesList.innerHTML = '';
+            places.forEach(function (place, index) {
+                var listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <input type="radio" name="place" value="${index}" id="place${index}">
+                    <label for="place${index}">${place.name} - ${place.vicinity} (${place.distance.toFixed(2)} km)</label>
+                `;
+                placesList.appendChild(listItem);
+            });
+        }
+
+        document.getElementById('submitForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var selectedPlaceIndex = document.querySelector('input[name="place"]:checked');
+            if (selectedPlaceIndex) {
+                var selectedPlace = placesWithDistance[selectedPlaceIndex.value];
+                var data = {
+                    timestamp: new Date().toISOString(),
+                    placetype: selectedPlace.type,
+                    name: selectedPlace.name,
+                    address: selectedPlace.vicinity,
+                    placeid: selectedPlace.placeId,
+                    latitude: selectedPlace.lat,
+                    longitude: selectedPlace.lng
+                };
+
+                try {
+                    const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT.supabase.co';
+                    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/your_table_name`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        document.getElementById('responseMessage').innerText = 'Place submitted successfully!';
+                    } else {
+                        throw new Error('Failed to insert data.');
+                    }
+                } catch (error) {
+                    document.getElementById('responseMessage').innerText = 'Error submitting data.';
+                }
+            } else {
+                alert("Please select a place first!");
+            }
+        });
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c; // Distance in kilometers
+            return distance;
+        }
+    </script>
+</body>
+</html>
