@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Places</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+        .form-group, .result-group {
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select, button {
+            padding: 10px;
+            font-size: 1em;
+            margin-top: 5px;
+        }
+        .place-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .place-item {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .note-input {
+            margin-top: 10px;
+        }
+        #error-msg {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nearby Places</h1>
+        <div class="form-group">
+            <label for="radius">Radius (feet):</label>
+            <input type="number" id="radius" placeholder="Enter radius (default 300)" value="300">
+        </div>
+        <div class="form-group">
+            <label for="place-type">Place Type:</label>
+            <select id="place-type">
+                <option value="restaurant" selected>Restaurant</option>
+                <option value="cafe">Cafe</option>
+                <option value="bar">Bar</option>
+                <option value="store">Store</option>
+                <option value="museum">Museum</option>
+            </select>
+        </div>
+        <button onclick="getNearbyPlaces()">Find Nearby Places</button>
+
+        <div id="error-msg"></div>
+
+        <ul id="places-list" class="place-list"></ul>
+
+        <div class="form-group note-input">
+            <label for="note">Add a Note:</label>
+            <input type="text" id="note" placeholder="Optional note for selected place">
+        </div>
+        <button onclick="submitData()">Submit Selected Place</button>
+    </div>
+
+    <script>
+        let map, service;
+        let userLocation = {};
+        let selectedPlace = null;
+
+        async function getCurrentLocation() {
+            try {
+                const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                return userLocation;
+            } catch (error) {
+                document.getElementById("error-msg").innerText = "Could not get location. Please enable location services.";
+            }
+        }
+
+        async function getNearbyPlaces() {
+            selectedPlace = null;
+            document.getElementById("places-list").innerHTML = "";
+
+            const radius = parseFloat(document.getElementById("radius").value) || 300;
+            const type = document.getElementById("place-type").value;
+
+            const location = await getCurrentLocation();
+            if (!location) return;
+
+            map = new google.maps.Map(document.createElement("div"));
+            service = new google.maps.places.PlacesService(map);
+
+            const request = {
+                location,
+                radius,
+                type
+            };
+
+            service.nearbySearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    results = results.sort((a, b) => google.maps.geometry.spherical.computeDistanceBetween(
+                        new google.maps.LatLng(location), a.geometry.location) -
+                        google.maps.geometry.spherical.computeDistanceBetween(
+                        new google.maps.LatLng(location), b.geometry.location));
+
+                    const list = document.getElementById("places-list");
+                    results.forEach((place, index) => {
+                        const distance = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(location), place.geometry.location);
+                        const li = document.createElement("li");
+                        li.className = "place-item";
+                        li.innerHTML = `
+                            <input type="radio" name="place" value="${index}" onclick="selectPlace(${index})">
+                            <strong>${place.name}</strong><br>
+                            ${place.vicinity}<br>
+                            Type: ${type}<br>
+                            Distance: ${Math.round(distance)} feet
+                        `;
+                        list.appendChild(li);
+                    });
+                    selectedPlace = results[0]; // Default selection
+                } else {
+                    document.getElementById("error-msg").innerText = "No results found.";
+                }
+            });
+        }
+
+        function selectPlace(index) {
+            const list = document.getElementById("places-list").children;
+            selectedPlace = list[index];
+        }
+
+        async function submitData() {
+            if (!selectedPlace) {
+                alert("Please select a place first.");
+                return;
+            }
+
+            const note = document.getElementById("note").value;
+            const data = {
+                latitude: selectedPlace.geometry.location.lat(),
+                longitude: selectedPlace.geometry.location.lng(),
+                name: selectedPlace.name,
+                address: selectedPlace.vicinity,
+                place_id: selectedPlace.place_id,
+                place_type: document.getElementById("place-type").value,
+                note,
+                timestamp: new Date().toISOString()
+            };
+
+            const supabaseUrl = "https://clvzguioggiejseuaeuv.supabase.co";
+            const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsdnpndWlvZ2dpZWpzZXVhZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxOTY0MzUsImV4cCI6MjA0NDc3MjQzNX0.HWJXObwLmCa-cR6en_SS8bUd1BI2M5eQsej3_BqZ4vQ";
+            const response = await fetch(`${supabaseUrl}/rest/v1/travels`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": supabaseKey,
+                    "Authorization": `Bearer ${supabaseKey}`
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert("Data submitted successfully!");
+            } else {
+                alert("There was an error submitting the data.");
+            }
+        }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&&libraries=places,geometry"></script>
+</body>
+</html>
