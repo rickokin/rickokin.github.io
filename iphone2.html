@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Places Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+        .form-group, .result-group {
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select, button {
+            padding: 10px;
+            font-size: 1em;
+            margin-top: 5px;
+        }
+        #map {
+            width: 100%;
+            height: 300px;
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+        .place-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .place-item {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .note-input {
+            margin-top: 10px;
+        }
+        #error-msg {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nearby Places Finder</h1>
+        <div class="form-group">
+            <label for="radius">Radius (feet):</label>
+            <input type="number" id="radius" placeholder="Enter radius (default 300)" value="300">
+        </div>
+        <div class="form-group">
+            <label for="place-type">Place Type:</label>
+            <select id="place-type">
+                <option value="restaurant" selected>Restaurant</option>
+                <option value="cafe">Cafe</option>
+                <option value="bar">Bar</option>
+                <option value="store">Store</option>
+                <option value="museum">Museum</option>
+            </select>
+        </div>
+        <button onclick="getNearbyPlaces()">Find Nearby Places</button>
+
+        <div id="map"></div>
+        <div id="current-info">
+            <p><strong>Current Location:</strong> <span id="current-address"></span></p>
+            <p><strong>Place Type:</strong> <span id="current-place-type">Unknown</span></p>
+        </div>
+
+        <ul id="places-list" class="place-list"></ul>
+
+        <div class="form-group note-input">
+            <label for="note">Add a Note:</label>
+            <input type="text" id="note" placeholder="Optional note for selected place">
+        </div>
+        <button onclick="submitData()">Submit Selected Place</button>
+        <button onclick="queryData()">Query Saved Data</button>
+        
+        <ul id="query-results" class="place-list"></ul>
+    </div>
+
+    <script>
+        let map, service;
+        let userLocation = {};
+        let selectedPlace = null;
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Initialize or retrieve User ID from local storage
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = generateUUID();
+            localStorage.setItem('userId', userId);
+        }
+
+        async function initMap() {
+            userLocation = await getCurrentLocation();
+            if (!userLocation) return;
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: userLocation,
+                zoom: 15,
+            });
+
+            new google.maps.Marker({
+                position: userLocation,
+                map,
+                title: "Current Location"
+            });
+
+            getAddress(userLocation);
+        }
+
+        async function getCurrentLocation() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        resolve(location);
+                    },
+                    (error) => {
+                        document.getElementById("error-msg").innerText = "Could not get location. Please enable location services.";
+                        reject(error);
+                    }
+                );
+            });
+        }
+
+        function getAddress(location) {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    document.getElementById("current-address").innerText = results[0].formatted_address;
+                } else {
+                    document.getElementById("current-address").innerText = "Address not found";
+                }
+            });
+        }
+
+        async function getNearbyPlaces() {
+            selectedPlace = null;
+            document.getElementById("places-list").innerHTML = "";
+
+            const radius = parseFloat(document.getElementById("radius").value) || 300;
+            const type = document.getElementById("place-type").value;
+
+            const location = await getCurrentLocation();
+            if (!location) return;
+
+            const request = {
+                location,
+                radius: radius * 0.3048, // Convert feet to meters
+                type
+            };
+
+            service = new google.maps.places.PlacesService(map);
+            service.nearbySearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    results.sort((a, b) => google.maps.geometry.spherical.computeDistanceBetween(
+                        new google.maps.LatLng(location), a.geometry.location) -
+                        google.maps.geometry.spherical.computeDistanceBetween(
+                        new google.maps.LatLng(location), b.geometry.location));
+
+                    const list = document.getElementById("places-list");
+                    results.forEach((place, index) => {
+                        const distance = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(location), place.geometry.location);
+                        const li = document.createElement("li");
+                        li.className = "place-item";
+                        li.innerHTML = `
+                            <input type="radio" name="place" value="${index}" onclick="selectPlace(${index}, '${place.place_id}', '${place.name}', '${place.vicinity}', '${type}')">
+                            <strong>${place.name}</strong><br>
+                            ${place.vicinity}<br>
+                            Type: ${type}<br>
+                            Distance: ${Math.round(distance)} feet
+                        `;
+                        list.appendChild(li);
+                    });
+                    selectedPlace = results[0];
+                } else {
+                    document.getElementById("error-msg").innerText = "No results found.";
+                }
+            });
+        }
+
+        function selectPlace(index, placeId, name, address, type) {
+            selectedPlace = { placeId, name, address, type };
+        }
+
+        async function submitData() {
+            if (!selectedPlace) {
+                alert("Please select a place first.");
+                return;
+            }
+
+            const note = document.getElementById("note").value;
+            const data = {
+                user_id: userId,
+                latitude: userLocation.lat,
+                longitude: userLocation.lng,
+                name: selectedPlace.name,
+                address: selectedPlace.address,
+                place_id: selectedPlace.placeId,
+                place_type: selectedPlace.type,
+                note,
+                timestamp: new Date().toISOString()
+            };
+
+            const supabaseUrl = "https://your-supabase-url.supabase.co";
+            const supabaseKey = "your-supabase-key";
+            const response = await fetch(`${supabaseUrl}/rest/v1/your-table-name`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": supabaseKey,
+                    "Authorization": `Bearer ${supabaseKey}`
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert("Data submitted successfully!");
+            } else {
+                alert("There was an error submitting the data.");
+            }
+        }
+
+        async function queryData() {
+            const supabaseUrl = "https://clvzguioggiejseuaeuv.supabase.co"";
+            const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsdnpndWlvZ2dpZWpzZXVhZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxOTY0MzUsImV4cCI6MjA0NDc3MjQzNX0.HWJXObwLmCa-cR6en_SS8bUd1BI2M5eQsej3_BqZ4vQ";
+
+            const response = await fetch(`${supabaseUrl}/rest/v1/travels?user_id=eq.${userId}`, {
+                method: "GET",
+                headers: {
+                    "apikey": supabaseKey,
+                    "Authorization": `Bearer ${supabaseKey}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const queryResults = document.getElementById("query-results");
+                queryResults.innerHTML = '';
+                data.forEach(item => {
+                    const li = document.createElement("li");
+                    li.className = "place-item";
+                    li.innerHTML = `
+                        <strong>${item.name}</strong><br>
+                        ${item.address}<br>
+                        Note: ${item.note}<br>
+                        Date: ${new Date(item.timestamp).toLocaleString()}
+                    `;
+                    queryResults.appendChild(li);
+                });
+            } else {
+                alert("There was an error retrieving the data.");
+            }
+        }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places,geometry&callback=initMap"></script>
+</body>
+</html>
