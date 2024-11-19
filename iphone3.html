@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Places Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        nav {
+            display: flex;
+            background-color: #333;
+            justify-content: space-around;
+            padding: 10px 0;
+        }
+        nav button {
+            color: white;
+            background: none;
+            border: none;
+            font-size: 1em;
+            cursor: pointer;
+            padding: 10px;
+        }
+        nav button.active {
+            border-bottom: 2px solid #fff;
+        }
+        .tab {
+            display: none;
+            padding: 20px;
+        }
+        .tab.active {
+            display: block;
+        }
+        .form-group, .result-group {
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select, button {
+            padding: 10px;
+            font-size: 1em;
+            margin-top: 5px;
+        }
+        #map {
+            width: 100%;
+            height: 300px;
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+        .place-list, .query-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .place-item {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <button class="tab-link active" onclick="openTab('nearby-tab')">Find Nearby Places</button>
+        <button class="tab-link" onclick="openTab('query-tab')">View Saved Data</button>
+    </nav>
+
+    <div id="nearby-tab" class="tab active">
+        <h1>Nearby Places Finder</h1>
+        <div class="form-group">
+            <label for="radius">Radius (feet):</label>
+            <input type="number" id="radius" placeholder="Enter radius (default 300)" value="300">
+        </div>
+        <div class="form-group">
+            <label for="place-type">Place Type:</label>
+            <select id="place-type">
+                <option value="restaurant" selected>Restaurant</option>
+                <option value="cafe">Cafe</option>
+                <option value="bar">Bar</option>
+                <option value="store">Store</option>
+                <option value="museum">Museum</option>
+            </select>
+        </div>
+        <button onclick="getNearbyPlaces()">Find Nearby Places</button>
+
+        <div id="map"></div>
+        <ul id="places-list" class="place-list"></ul>
+
+        <div class="form-group">
+            <label for="note">Add a Note:</label>
+            <input type="text" id="note" placeholder="Optional note for selected place">
+        </div>
+        <button onclick="submitData()">Submit Selected Place</button>
+    </div>
+
+    <div id="query-tab" class="tab">
+        <h1>Saved Data</h1>
+        <button onclick="queryData()">Query Saved Data</button>
+        <ul id="query-results" class="query-list"></ul>
+    </div>
+
+    <script>
+        let map, service;
+        let userLocation = {};
+        let selectedPlace = null;
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Initialize or retrieve User ID from local storage
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = generateUUID();
+            localStorage.setItem('userId', userId);
+        }
+
+        function openTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function initMap() {
+            userLocation = await getCurrentLocation();
+            if (!userLocation) return;
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: userLocation,
+                zoom: 15,
+            });
+
+            new google.maps.Marker({
+                position: userLocation,
+                map,
+                title: "Current Location"
+            });
+        }
+
+        async function getCurrentLocation() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        resolve(location);
+                    },
+                    (error) => {
+                        alert("Could not get location. Please enable location services.");
+                        reject(error);
+                    }
+                );
+            });
+        }
+
+        async function getNearbyPlaces() {
+            selectedPlace = null;
+            document.getElementById("places-list").innerHTML = "";
+
+            const radius = parseFloat(document.getElementById("radius").value) || 300;
+            const type = document.getElementById("place-type").value;
+
+            const request = {
+                location: userLocation,
+                radius: radius * 0.3048, // Convert feet to meters
+                type
+            };
+
+            service = new google.maps.places.PlacesService(map);
+            service.nearbySearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    results.sort((a, b) => google.maps.geometry.spherical.computeDistanceBetween(
+                        new google.maps.LatLng(userLocation), a.geometry.location) -
+                        google.maps.geometry.spherical.computeDistanceBetween(
+                        new google.maps.LatLng(userLocation), b.geometry.location));
+
+                    const list = document.getElementById("places-list");
+                    results.forEach((place, index) => {
+                        const distance = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userLocation), place.geometry.location);
+                        const li = document.createElement("li");
+                        li.className = "place-item";
+                        li.innerHTML = `
+                            <input type="radio" name="place" value="${index}" onclick="selectPlace('${place.place_id}', '${place.name}', '${place.vicinity}', '${type}')">
+                            <strong>${place.name}</strong><br>
+                            ${place.vicinity}<br>
+                            Type: ${type}<br>
+                            Distance: ${Math.round(distance)} feet
+                        `;
+                        list.appendChild(li);
+                    });
+                }
+            });
+        }
+
+        function selectPlace(placeId, name, address, type) {
+            selectedPlace = { placeId, name, address, type };
+        }
+
+        async function submitData() {
+            if (!selectedPlace) {
+                alert("Please select a place first.");
+                return;
+            }
+
+            const note = document.getElementById("note").value;
+            const data = {
+                user_id: userId,
+                latitude: userLocation.lat,
+                longitude: userLocation.lng,
+                name: selectedPlace.name,
+                address: selectedPlace.address,
+                place_id: selectedPlace.placeId,
+                place_type: selectedPlace.type,
+                note,
+                timestamp: new Date().toISOString()
+            };
+
+            const supabaseUrl = "https://clvzguioggiejseuaeuv.supabase.co";
+            const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsdnpndWlvZ2dpZWpzZXVhZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxOTY0MzUsImV4cCI6MjA0NDc3MjQzNX0.HWJXObwLmCa-cR6en_SS8bUd1BI2M5eQsej3_BqZ4vQ";
+            const response = await fetch(`${supabaseUrl}/rest/v1/travels`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": supabaseKey,
+                    "Authorization": `Bearer ${supabaseKey}`
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert("Data submitted successfully!");
+            } else {
+                alert("There was an error submitting the data.");
+            }
+        }
+
+        async function queryData() {
+            const supabaseUrl = "https://clvzguioggiejseuaeuv.supabase.co";
+            const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsdnpndWlvZ2dpZWpzZXVhZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxOTY0MzUsImV4cCI6MjA0NDc3MjQzNX0.HWJXObwLmCa-cR6en_SS8bUd1BI2M5eQsej3_BqZ4vQ";
+
+            const response = await fetch(`${supabaseUrl}/rest/v1/travels?user_id=eq.${userId}&order=timestamp.desc`, {
+                method: "GET",
+                headers: {
+                    "apikey": supabaseKey,
+                    "Authorization": `Bearer ${supabaseKey}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const queryResults = document.getElementById("query-results");
+                queryResults.innerHTML = '';
+                data.forEach(item => {
+                    const li = document.createElement("li");
+                    li.className = "place-item";
+                    li.innerHTML = `
+                        <strong>${item.name}</strong><br>
+                        ${item.address}<br>
+                        Note: ${item.note}<br>
+                        Date: ${new Date(item.timestamp).toLocaleString()}
+                    `;
+                    queryResults.appendChild(li);
+                });
+            } else {
+                alert("There was an error retrieving the data.");
+            }
+        }
+
+        initMap();
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAFyXLqb4z8kE1HehX-OKdH0hNjGyrLHI&libraries=places,geometry&callback=initMap"></script>
+</body>
+</html>
