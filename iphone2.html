@@ -252,7 +252,7 @@
             const supabaseUrl = "https://clvzguioggiejseuaeuv.supabase.co";
             const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsdnpndWlvZ2dpZWpzZXVhZXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxOTY0MzUsImV4cCI6MjA0NDc3MjQzNX0.HWJXObwLmCa-cR6en_SS8bUd1BI2M5eQsej3_BqZ4vQ";
 
-            const response = await fetch(`${supabaseUrl}/rest/v1/travels?user_id=eq.${userId}`, {
+            const response = await fetch(`${supabaseUrl}/rest/v1/travels?user_id=eq.${userId}&order=timestamp.desc``, {
                 method: "GET",
                 headers: {
                     "apikey": supabaseKey,
