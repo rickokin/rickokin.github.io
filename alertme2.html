@@ -21,7 +21,6 @@
         const restaurants = [
             { name: "Restaurant A", location: { lat: 40.748817, lng: -73.985428 } }, // Example: New York
             { name: "Restaurant B", location: { lat: 34.052235, lng: -118.243683 } } // Example: Los Angeles
-            { name: "Restaurant C", location: { lat: 40.7633059, lng: -73.9712484 } } // Example: Home
         ];
         const alertDistance = 50; // Distance in meters
         const alertTime = 300000; // Time in milliseconds (5 minutes)
@@ -53,17 +52,27 @@
                             lat: position.coords.latitude,
                             lng: position.coords.longitude
                         };
-                        document.getElementById("location").innerText =
-                            `Latitude: ${userLocation.lat.toFixed(6)}, Longitude: ${userLocation.lng.toFixed(6)}`;
+                        updateLocationDisplay();
                         checkProximity();
                     },
                     (error) => {
                         console.error("Error fetching location:", error);
+                        alert("Error fetching location. Please ensure location services are enabled.");
                     },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                 );
             } else {
                 alert("Geolocation is not supported by your browser.");
+            }
+        }
+
+        function updateLocationDisplay() {
+            const locationElement = document.getElementById("location");
+            if (userLocation) {
+                locationElement.innerText =
+                    `Latitude: ${userLocation.lat.toFixed(6)}, Longitude: ${userLocation.lng.toFixed(6)}`;
+            } else {
+                locationElement.innerText = "Fetching location...";
             }
         }
 
@@ -124,7 +133,7 @@
     </script>
 </head>
 <body>
-    <h1>Restaurant Alert WebApp</h1>
+    <h1>Restaurant Alert WebApp222</h1>
     <p>This app monitors your location and alerts you if you stay in a restaurant for more than 5 minutes.</p>
     <p id="location">Fetching location...</p>
 </body>
