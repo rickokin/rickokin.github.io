@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notification App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+        }
+    </style>
+    <script>
+        let userMessage = "";
+        let notificationInterval;
+
+        function requestNotificationPermission() {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission !== "granted") {
+                        alert("Please enable notifications for this app to function correctly.");
+                    }
+                });
+            } else {
+                alert("Your browser does not support notifications.");
+            }
+        }
+
+        function scheduleNotification() {
+            userMessage = document.getElementById("messageInput").value;
+            if (!userMessage) {
+                alert("Please enter a message first.");
+                return;
+            }
+            
+            setTimeout(() => {
+                sendNotification(userMessage);
+                notificationInterval = setInterval(() => {
+                    sendNotification(userMessage);
+                }, 120000); // Repeat every 2 minutes
+            }, 10000); // Initial delay of 10 seconds
+        }
+
+        function sendNotification(message) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(message);
+            } else {
+                alert(message); // Fallback for unsupported browsers
+            }
+        }
+
+        window.onload = requestNotificationPermission;
+    </script>
+</head>
+<body>
+    <h1>Push Notification App</h1>
+    <p>Enter text below, and the app will send a push notification after 10 seconds, then repeat every 2 minutes.</p>
+    <input type="text" id="messageInput" placeholder="Enter your message">
+    <button onclick="scheduleNotification()">Schedule Notification</button>
+</body>
+</html>
