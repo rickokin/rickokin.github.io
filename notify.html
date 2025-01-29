@@ -14,10 +14,16 @@
             padding: 10px;
             margin: 10px;
         }
+        #countdown {
+            font-size: 18px;
+            margin-top: 15px;
+        }
     </style>
     <script>
         let userMessage = "";
         let notificationInterval;
+        let countdownTimer;
+        let timeRemaining = 10;
 
         function requestNotificationPermission() {
             if ("Notification" in window) {
@@ -31,6 +37,24 @@
             }
         }
 
+        function startCountdown(duration, callback) {
+            timeRemaining = duration;
+            updateCountdownDisplay();
+
+            countdownTimer = setInterval(() => {
+                timeRemaining--;
+                updateCountdownDisplay();
+                if (timeRemaining <= 0) {
+                    clearInterval(countdownTimer);
+                    callback();
+                }
+            }, 1000);
+        }
+
+        function updateCountdownDisplay() {
+            document.getElementById("countdown").innerText = `Next notification in: ${timeRemaining} seconds`;
+        }
+
         function scheduleNotification() {
             userMessage = document.getElementById("messageInput").value;
             if (!userMessage) {
@@ -38,12 +62,14 @@
                 return;
             }
             
-            setTimeout(() => {
+            startCountdown(10, () => {
                 sendNotification(userMessage);
                 notificationInterval = setInterval(() => {
-                    sendNotification(userMessage);
+                    startCountdown(120, () => {
+                        sendNotification(userMessage);
+                    });
                 }, 120000); // Repeat every 2 minutes
-            }, 10000); // Initial delay of 10 seconds
+            });
         }
 
         function sendNotification(message) {
@@ -58,9 +84,10 @@
     </script>
 </head>
 <body>
-    <h1>Push Notification App</h1>
+    <h1>Push Notification App222</h1>
     <p>Enter text below, and the app will send a push notification after 10 seconds, then repeat every 2 minutes.</p>
     <input type="text" id="messageInput" placeholder="Enter your message">
     <button onclick="scheduleNotification()">Schedule Notification</button>
+    <p id="countdown">Next notification in: -- seconds</p>
 </body>
 </html>
