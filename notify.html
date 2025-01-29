@@ -23,7 +23,7 @@
         let userMessage = "";
         let notificationInterval;
         let countdownTimer;
-        let timeRemaining = 10;
+        let timeRemaining;
 
         function requestNotificationPermission() {
             if ("Notification" in window) {
@@ -40,7 +40,8 @@
         function startCountdown(duration, callback) {
             timeRemaining = duration;
             updateCountdownDisplay();
-
+            
+            if (countdownTimer) clearInterval(countdownTimer);
             countdownTimer = setInterval(() => {
                 timeRemaining--;
                 updateCountdownDisplay();
@@ -64,12 +65,17 @@
             
             startCountdown(10, () => {
                 sendNotification(userMessage);
-                notificationInterval = setInterval(() => {
-                    startCountdown(120, () => {
-                        sendNotification(userMessage);
-                    });
-                }, 120000); // Repeat every 2 minutes
+                repeatNotifications();
             });
+        }
+
+        function repeatNotifications() {
+            if (notificationInterval) clearInterval(notificationInterval);
+            notificationInterval = setInterval(() => {
+                startCountdown(120, () => {
+                    sendNotification(userMessage);
+                });
+            }, 120000); // Repeat every 2 minutes
         }
 
         function sendNotification(message) {
@@ -84,7 +90,7 @@
     </script>
 </head>
 <body>
-    <h1>Push Notification App222</h1>
+    <h1>Push Notification App333</h1>
     <p>Enter text below, and the app will send a push notification after 10 seconds, then repeat every 2 minutes.</p>
     <input type="text" id="messageInput" placeholder="Enter your message">
     <button onclick="scheduleNotification()">Schedule Notification</button>
